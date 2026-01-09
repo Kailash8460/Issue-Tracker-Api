@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from app.database import test_connection
+from app.database import test_connection, engine
+from app.models.user import User
 
 app = FastAPI()
 
@@ -9,6 +10,7 @@ def health_check():
     return {"status": "Issue Tracker API is running"}
 
 
+# To check the database connection
 @app.get("/test-db-connection")
 def test_db_connection():
     try:
@@ -16,3 +18,9 @@ def test_db_connection():
         return {"database_connection": "successful", "result": result}
     except Exception as e:
         return {"database_connection": "failed", "error": str(e)}
+
+
+# Create the database tables on startup
+@app.on_event("startup")
+def on_startup():
+    User.__table__.create(bind=engine, checkfirst=True)
