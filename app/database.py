@@ -12,7 +12,17 @@ sessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+# Function to test database connection
 def test_connection():
     with engine.connect() as connection:
         result = connection.execute(text("SELECT 1"))
         return result.scalar()
+
+
+# Dependency to get DB session
+def get_db():
+    db = sessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

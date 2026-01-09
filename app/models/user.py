@@ -10,6 +10,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     full_name = Column(String, nullable=True)
     mobile_number = Column(String(10), nullable=True)
+    password_hash = Column(String, nullable=False)
 
     __table_args__ = (
         CheckConstraint(
