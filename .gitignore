@@ -1,0 +1,23 @@
+# Python virtual environment
+venv/
+
+# Environment variables file
+.env
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+# Alembic migration folders
+alembic/versions/*
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Logs
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
