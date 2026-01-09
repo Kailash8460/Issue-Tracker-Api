@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from app.database import test_connection, engine
 from app.models.user import User
-from app.routers import users
+from app.models.issue import Issue
+from app.routers import users, issues
 
 app = FastAPI()
 
@@ -25,6 +26,8 @@ def test_db_connection():
 @app.on_event("startup")
 def on_startup():
     User.__table__.create(bind=engine, checkfirst=True)
+    Issue.__table__.create(bind=engine, checkfirst=True)
 
 
 app.include_router(users.router)
+app.include_router(issues.router)

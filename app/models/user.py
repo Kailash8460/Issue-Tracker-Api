@@ -1,5 +1,6 @@
 from sqlalchemy import CheckConstraint, Column, Integer, String
 from app.database import Base
+from sqlalchemy.orm import relationship
 
 
 class User(Base):
@@ -11,6 +12,7 @@ class User(Base):
     full_name = Column(String, nullable=True)
     mobile_number = Column(String(10), nullable=True)
     password_hash = Column(String, nullable=False)
+    issues = relationship("Issue", back_populates="assignee")
 
     __table_args__ = (
         CheckConstraint(
