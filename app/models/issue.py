@@ -26,6 +26,9 @@ class Issue(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
     resolved_at = Column(DateTime, nullable=True)
+    comments = relationship(
+        "Comment", back_populates="issue", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint(

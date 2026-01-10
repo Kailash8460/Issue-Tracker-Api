@@ -145,7 +145,6 @@ def get_issue(
         else:
             query = query.filter(Issue.resolved_at.is_(None))
 
-    # total = query.with_entities(func.count()).scalar()
     total = query.count()
     sort_column = getattr(Issue, sort_by)
     query = query.order_by(

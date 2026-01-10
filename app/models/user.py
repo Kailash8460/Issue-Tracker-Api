@@ -13,6 +13,9 @@ class User(Base):
     mobile_number = Column(String(10), nullable=True)
     password_hash = Column(String, nullable=False)
     issues = relationship("Issue", back_populates="assignee")
+    comments = relationship(
+        "Comment", back_populates="author", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint(
