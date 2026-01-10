@@ -70,3 +70,15 @@ class CSVImportContent(BaseModel):
     created_issues: int
     failed_rows: int
     errors: List[dict]
+
+
+class IssueEventResponse(BaseModel):
+    id: int
+    issue_id: int
+    event_type: str
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

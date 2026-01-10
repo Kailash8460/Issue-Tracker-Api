@@ -4,6 +4,7 @@ from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.issue import Issue
+from app.models.issue_event import IssueEvent
 from app.models.user import User
 from app.schemas.issue import (
     BulkStatusUpdate,
@@ -12,11 +13,13 @@ from app.schemas.issue import (
     IssueResponse,
     IssueListResponse,
     CSVImportContent,
+    IssueEventResponse,
 )
 from datetime import datetime
-from typing import Optional, Literal
+from typing import List, Optional, Literal
 import csv
 import io
+from app.utils.timeline import log_issue_event
 
 router = APIRouter(
     prefix="/issues",
@@ -43,6 +46,12 @@ def create_issue(issue: IssueCreate, db: Session = Depends(get_db)):
     db.add(db_issue)
     db.commit()
     db.refresh(db_issue)
+    log_issue_event(
+        db_session=db,
+        issue_id=db_issue.id,
+        event_type="issue created",
+        new_value=db_issue.title,
+    )
     return db_issue
 
 
@@ -71,23 +80,46 @@ def update_issue(issue_id: int, issue: IssueUpdate, db: Session = Depends(get_db
     if issue.description is not None:
         db_issue.description = issue.description
 
-    if issue.status is not None:
-        db_issue.status = issue.status
+    if issue.status is not None and issue.status != db_issue.status:
+        old_status = db_issue.status
+        new_status = issue.status
+        db_issue.status = new_status
+        log_issue_event(
+            db_session=db,
+            issue_id=db_issue.id,
+            event_type="status updated",
+            old_value=old_status,
+            new_value=new_status,
+        )
         if issue.status == "resolved":
             db_issue.resolved_at = datetime.utcnow()
         elif issue.status != "resolved":
             db_issue.resolved_at = None
 
-    if issue.priority is not None:
+    if issue.priority is not None and issue.priority != db_issue.priority:
+        log_issue_event(
+            db_session=db,
+            issue_id=db_issue.id,
+            event_type="priority updated",
+            old_value=db_issue.priority,
+            new_value=issue.priority,
+        )
         db_issue.priority = issue.priority
 
-    if issue.assignee_id is not None:
+    if issue.assignee_id is not None and issue.assignee_id != db_issue.assignee_id:
         user = db.query(User).filter(User.id == issue.assignee_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Assignee user not found",
             )
+        log_issue_event(
+            db_session=db,
+            issue_id=db_issue.id,
+            event_type="assignee updated",
+            old_value=str(db_issue.assignee_id),
+            new_value=str(issue.assignee_id),
+        )
         db_issue.assignee_id = issue.assignee_id
 
     db_issue.version += 1
@@ -308,3 +340,25 @@ def import_issues_from_csv(
         failed_rows=failed_rows,
         errors=errors,
     )
+
+
+@router.get(
+    "/{issue_id}/timeline",
+    response_model=List[IssueEventResponse],
+    status_code=status.HTTP_200_OK,
+)
+def get_issue_timeline(issue_id: int, db: Session = Depends(get_db)):
+    issue = db.query(Issue).filter(Issue.id == issue_id).first()
+    if not issue:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found",
+        )
+
+    events = (
+        db.query(IssueEvent)
+        .filter(IssueEvent.issue_id == issue_id)
+        .order_by(asc(IssueEvent.created_at))
+        .all()
+    )
+    return events

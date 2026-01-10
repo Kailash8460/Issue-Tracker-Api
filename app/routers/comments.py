@@ -9,6 +9,8 @@ from app.schemas.comment import CommentCreate, CommentResponse, CommentListRespo
 from typing import Optional, Literal
 from datetime import datetime
 
+from app.utils.timeline import log_issue_event
+
 router = APIRouter(
     prefix="/issues/{issue_id}/comments",
     tags=["comments"],
@@ -39,6 +41,12 @@ def create_comment(
         author_id=comment.author_id,
     )
     db.add(db_comment)
+    log_issue_event(
+        db_session=db,
+        issue_id=issue_id,
+        event_type="comment added",
+        new_value=f"Comment Content: {db_comment.content[:30]}...",
+    )
     db.commit()
     db.refresh(db_comment)
     return db_comment

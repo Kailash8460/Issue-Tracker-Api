@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models.issue import Issue
 from app.models.label import Label
 from app.schemas.label import IssueLabelUpdate, LabelListResponse
+from app.utils.timeline import log_issue_event
 
 router = APIRouter(
     prefix="/issues/{issue_id}/labels",
@@ -25,6 +26,7 @@ def replace_issue_labels(
         )
 
     try:
+        old_labels_str = ", ".join([label.name for label in issue.labels])
         new_labels = []
         for label_name in label_update.labels:
             normalized_name = label_name.strip().lower()
@@ -35,6 +37,14 @@ def replace_issue_labels(
                 db.flush()
             new_labels.append(label)
         issue.labels = new_labels
+        new_labels_str = ", ".join(label.name for label in new_labels)
+        log_issue_event(
+            db_session=db,
+            issue_id=issue_id,
+            event_type="labels updated",
+            old_value=old_labels_str,
+            new_value=new_labels_str,
+        )
         db.commit()
         db.refresh(issue)
         return LabelListResponse(total=len(issue.labels), labels=issue.labels)

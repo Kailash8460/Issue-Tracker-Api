@@ -31,6 +31,9 @@ class Issue(Base):
         "Comment", back_populates="issue", cascade="all, delete-orphan"
     )
     labels = relationship("Label", secondary=issue_labels, back_populates="issues")
+    events = relationship(
+        "IssueEvent", back_populates="issue", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint(
