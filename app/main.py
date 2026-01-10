@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.database import Base, test_connection, engine
 from app.models import *
-from app.routers import comments, users, issues, labels
+from app.routers import comments, users, issues, labels, reports
 
 app = FastAPI()
 
@@ -34,3 +34,4 @@ app.include_router(users.router)
 app.include_router(issues.router)
 app.include_router(comments.router)
 app.include_router(labels.router)
+app.include_router(reports.router)
