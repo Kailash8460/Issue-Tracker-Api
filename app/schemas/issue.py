@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -30,6 +30,31 @@ class IssueResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class IssueFilter(BaseModel):
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    assignee_id: Optional[int] = None
+    created_after: Optional[datetime] = None
+    created_before: Optional[datetime] = None
+    updated_after: Optional[datetime] = None
+    updated_before: Optional[datetime] = None
+    resolved: Optional[bool] = None
+    page: int = Field(1, ge=1)
+    page_size: int = Field(10, ge=1, le=100)
+    sort_by: Literal["created_at", "updated_at", "priority", "status"] = "created_at"
+    sort_order: Literal["asc", "desc"] = "desc"
+
+
+class IssueListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    issues: list[IssueResponse]
 
     class Config:
         from_attributes = True
