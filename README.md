@@ -97,7 +97,9 @@ Sample Data Flow.csv
 
 ### Install Dependencies
 
+```text
 pip install -r requirements.txt
+```
 
 ---
 
@@ -113,7 +115,9 @@ Required variable:
 
 ## Running the Application
 
+```text
 uvicorn app.main:app --reload
+```
 
 Swagger UI:
 http://127.0.0.1:8000/docs
