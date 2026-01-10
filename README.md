@@ -42,6 +42,7 @@ and database transactions.
 
 ## Project Structure
 
+```text
 app/
 ├── main.py
 ├── database.py
@@ -75,6 +76,7 @@ README.md
 TEST_CASES.md
 CSV Format.txt
 Sample Data Flow.csv
+```
 
 ---
 
