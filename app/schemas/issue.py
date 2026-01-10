@@ -63,3 +63,10 @@ class IssueListResponse(BaseModel):
 class BulkStatusUpdate(BaseModel):
     issue_ids: List[int] = Field(..., min_items=1)
     status: Literal["open", "in_progress", "resolved", "closed"]
+
+
+class CSVImportContent(BaseModel):
+    total_rows: int
+    created_issues: int
+    failed_rows: int
+    errors: List[dict]

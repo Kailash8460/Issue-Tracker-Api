@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, UploadFile, File
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.models.issue import Issue
 from app.models.user import User
@@ -11,9 +11,12 @@ from app.schemas.issue import (
     IssueUpdate,
     IssueResponse,
     IssueListResponse,
+    CSVImportContent,
 )
 from datetime import datetime
 from typing import Optional, Literal
+import csv
+import io
 
 router = APIRouter(
     prefix="/issues",
@@ -224,3 +227,84 @@ def bulk_update_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Bulk update failed, transaction rolled back",
         )
+
+
+@router.post(
+    "/import-csv", response_model=CSVImportContent, status_code=status.HTTP_201_CREATED
+)
+def import_issues_from_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file extension. Please upload a CSV file.",
+        )
+
+    if file.content_type != "text/csv":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Please upload a CSV file.",
+        )
+
+    content = file.file.read().decode("utf-8")
+    reader = csv.DictReader(io.StringIO(content))
+
+    total_rows = 0
+    created_issues = 0
+    failed_rows = 0
+    errors = []
+
+    allowed_priorities = {"low", "medium", "high", "critical"}
+
+    for index, row in enumerate(reader, start=1):
+        total_rows += 1
+        try:
+            title = row.get("title")
+            if not title or not (5 <= len(title) <= 200):
+                raise ValueError("Title must be between 5 and 200 characters.")
+
+            description = row.get("description", "")
+
+            priority = row.get("priority")
+            if priority not in allowed_priorities:
+                raise ValueError(
+                    f"Invalid priority '{priority}'. Must be one of {allowed_priorities}."
+                )
+
+            assignee_id = row.get("assignee_id")
+            if assignee_id:
+                assignee = db.query(User).filter(User.id == int(assignee_id)).first()
+                if not assignee:
+                    raise ValueError(f"Assignee with ID {assignee_id} does not exist.")
+
+            db_issue = Issue(
+                title=title,
+                description=description,
+                priority=priority,
+                assignee_id=int(assignee_id) if assignee_id else None,
+                status="open",
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(db_issue)
+            db.commit()
+            created_issues += 1
+
+        except ValueError as e:
+            db.rollback()
+            failed_rows += 1
+            errors.append(
+                {
+                    "row": index,
+                    "error": str(e),
+                }
+            )
+
+    return CSVImportContent(
+        total_rows=total_rows,
+        created_issues=created_issues,
+        failed_rows=failed_rows,
+        errors=errors,
+    )
