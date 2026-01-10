@@ -1,0 +1,5 @@
+title,description,priority,assignee_id
+Login bug,Users cannot login,high,1
+Slow API,Dashboard is slow,medium,2
+Broken link,,low,
+Invalid issue,,urgent,999

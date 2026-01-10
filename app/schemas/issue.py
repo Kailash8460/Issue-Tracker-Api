@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from datetime import datetime
 
 
@@ -58,3 +58,8 @@ class IssueListResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BulkStatusUpdate(BaseModel):
+    issue_ids: List[int] = Field(..., min_items=1)
+    status: Literal["open", "in_progress", "resolved", "closed"]

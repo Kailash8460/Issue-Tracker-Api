@@ -1,10 +1,17 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.models.issue import Issue
 from app.models.user import User
-from app.schemas.issue import IssueCreate, IssueUpdate, IssueResponse, IssueListResponse
+from app.schemas.issue import (
+    BulkStatusUpdate,
+    IssueCreate,
+    IssueUpdate,
+    IssueResponse,
+    IssueListResponse,
+)
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -159,3 +166,61 @@ def get_issue(
         issues=issues,
     )
     return db_issue
+
+
+@router.post("/bulk-status", status_code=status.HTTP_200_OK)
+def bulk_update_status(
+    bulk_status_update: BulkStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    try:
+        issues = (
+            db.query(Issue)
+            .filter(Issue.id.in_(bulk_status_update.issue_ids))
+            .with_for_update()
+            .all()
+        )
+
+        if len(issues) != len(bulk_status_update.issue_ids):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Some issues not found",
+            )
+
+        for issue in issues:
+            if bulk_status_update.status == "closed" and issue.status != "resolved":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Issue ID {issue.id} must be resolved before closing",
+                )
+
+            issue.status = bulk_status_update.status
+
+            if bulk_status_update.status == "resolved":
+                issue.resolved_at = datetime.utcnow()
+            elif (
+                bulk_status_update.status == "open"
+                or bulk_status_update.status == "in_progress"
+            ):
+                issue.resolved_at = None
+
+            issue.version += 1
+
+        db.commit()
+        total = len(issues)
+        return {
+            "message": "Bulk status update successful",
+            "updated_count": total,
+            "issue_ids": bulk_status_update.issue_ids,
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bulk update failed, transaction rolled back",
+        )
