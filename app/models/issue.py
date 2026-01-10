@@ -10,6 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
+from app.models.issue_label import issue_labels
 
 
 class Issue(Base):
@@ -29,6 +30,7 @@ class Issue(Base):
     comments = relationship(
         "Comment", back_populates="issue", cascade="all, delete-orphan"
     )
+    labels = relationship("Label", secondary=issue_labels, back_populates="issues")
 
     __table_args__ = (
         CheckConstraint(
